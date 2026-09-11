@@ -1,4 +1,4 @@
-# Zircon
+# Title
 
 retarded test AI application. all of this was made with chatgpt and deepseek. 
 
