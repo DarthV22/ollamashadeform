@@ -27,7 +27,7 @@ def load_config():
     if not CONFIG_FILE.exists():
         print("\nConfig file not found.")
         print(f"Expected: {CONFIG_FILE}")
-        print("\nCreate config/config.json before running Zircon.")
+        print("\nCreate config/config.json before running OllamaShade.")
         sys.exit(1)
 
     try:
@@ -102,7 +102,7 @@ def run_powershell(script, arguments=None):
 def initialise(config):
     """Start the Shadeform instance and Ollama."""
 
-    print("\nStarting Zircon...")
+    print("\nStarting OllamaShade...")
     print("Creating Shadeform instance and starting Ollama.")
     print("This may take several minutes.\n")
 
@@ -139,7 +139,7 @@ def initialise(config):
         print(f"Error: {error}")
         return False
 
-    print("\nZircon is ready.")
+    print("\nOllamaShade is ready.")
     return True
 
 # ============================================================
@@ -155,7 +155,7 @@ def prompt_model(config):
         return
 
     print("\n========================================")
-    print("              ZIRCON CHAT")
+    print("             OLLAMASHADE CHAT")
     print("========================================")
     print("Type 'exit' to return to the main menu.\n")
 
@@ -234,7 +234,7 @@ def clear_instance(config):
 def show_status(config):
 
     print("\n========================================")
-    print("              ZIRCON STATUS")
+    print("             OLLAMASHADE STATUS")
     print("========================================")
 
     if config.get("active"):
@@ -259,7 +259,7 @@ def main():
     while True:
 
         print("========================================")
-        print("                ZIRCON")
+        print("              OLLAMASHADE")
         print("========================================")
 
         if config.get("active"):
@@ -305,7 +305,7 @@ def main():
 
         elif choice == "5":
 
-            print("\nExiting Zircon.")
+            print("\nExiting OllamaShade.")
             break
 
         else:
