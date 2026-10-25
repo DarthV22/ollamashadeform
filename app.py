@@ -28,7 +28,7 @@ def load_config():
     if not CONFIG_FILE.exists():
         print("\nConfig file not found.")
         print(f"Expected: {CONFIG_FILE}")
-        print("\nCreate config/config.json before running OllamaShade.")
+        print("\nCreate config/config.json before running OllamaShadeform.")
         sys.exit(1)
 
     try:
@@ -147,7 +147,7 @@ def run_powershell(script, arguments=None):
 
     except FileNotFoundError:
         print("\nPowerShell could not be found.")
-        print("OllamaShade currently requires PowerShell on Windows.")
+        print("OllamaShadeform currently requires PowerShell on Windows.")
         return None
     except KeyboardInterrupt:
         if process is not None:
@@ -183,7 +183,7 @@ def run_powershell(script, arguments=None):
 def initialise(config):
     """Start the Shadeform instance and Ollama."""
 
-    print("\nStarting OllamaShade...")
+    print("\nStarting OllamaShadeform...")
     print("Creating Shadeform instance and starting Ollama.")
     print("This may take several minutes.\n")
 
@@ -219,7 +219,7 @@ def initialise(config):
         print(f"Error: {error}")
         return False
 
-    print("\nOllamaShade is ready.")
+    print("\nOllamaShadeform is ready.")
     return True
 
 # ============================================================
@@ -235,7 +235,7 @@ def prompt_model(config):
         return
 
     print("\n========================================")
-    print("             OLLAMASHADE CHAT")
+    print("OLLAMASHADEFORM CHAT".center(40))
     print("========================================")
     print("Type 'exit' to return to the main menu.\n")
 
@@ -326,7 +326,7 @@ def clear_instance(config):
 def show_status(config):
 
     print("\n========================================")
-    print("             OLLAMASHADE STATUS")
+    print("OLLAMASHADEFORM STATUS".center(40))
     print("========================================")
 
     if config.get("active"):
@@ -356,7 +356,7 @@ def main():
     while True:
 
         print("========================================")
-        print("              OLLAMASHADE")
+        print("OLLAMASHADEFORM".center(40))
         print("========================================")
 
         if config.get("active"):
@@ -405,7 +405,7 @@ def main():
 
         elif choice == "5":
 
-            print("\nExiting OllamaShade.")
+            print("\nExiting OllamaShadeform.")
             if config.get("instance_id"):
                 print("Your instance is still running and may incur charges. Use Delete instance to stop it.")
             break

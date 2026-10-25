@@ -1,4 +1,4 @@
-﻿# OllamaShade
+# OllamaShadeform
 
 A small Windows command-line launcher for running an [Ollama](https://ollama.com/) model on an on-demand [Shadeform](https://www.shadeform.ai/) A6000 GPU instance. Start an instance, send prompts, view saved instance details, and delete it when finished. The project runs in its own Python virtual environment (`.venv`) and uses only Python's standard library.
 

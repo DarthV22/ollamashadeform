@@ -1,4 +1,4 @@
-﻿param(
+param(
     [Parameter(Mandatory = $true)][string]$model,
     [string]$apiKey = $env:SHADEFORM_API_KEY
 )
@@ -48,14 +48,14 @@ try {
     Write-Host "Instance: $($instance.shade_instance_type) on $($instance.cloud), $($offer.Region)"
     Write-Host "Price: $($offer.Price) cents per hour. Charges continue until deletion."
 
-    $launchScript = "#!/bin/bash`nset -euo pipefail`nsudo docker run -d --restart unless-stopped --gpus all --name ollamashade -p 127.0.0.1:11434:11434 -v ollama:/root/.ollama ollama/ollama:latest`n"
+    $launchScript = "#!/bin/bash`nset -euo pipefail`nsudo docker run -d --restart unless-stopped --gpus all --name ollamashadeform -p 127.0.0.1:11434:11434 -v ollama:/root/.ollama ollama/ollama:latest`n"
     $body = @{
         cloud = $instance.cloud
         region = $offer.Region
         shade_instance_type = $instance.shade_instance_type
         shade_cloud = $true
         rental_type = 'on_demand'
-        name = 'ollamashade'
+        name = 'ollamashadeform'
         ssh_key_id = $existing.ssh_key_id
         launch_configuration = @{
             type = 'script'
