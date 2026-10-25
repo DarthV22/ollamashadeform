@@ -1,4 +1,4 @@
-﻿# Shared SSH transport. Ollama listens only on the remote loopback interface.
+# Shared SSH transport. Ollama listens only on the remote loopback interface.
 function Invoke-OllamaOverSsh {
     param(
         [Parameter(Mandatory = $true)]$Config,
@@ -10,7 +10,7 @@ function Invoke-OllamaOverSsh {
     if ($Config.ssh_user -notmatch '^[a-zA-Z0-9_-]+$' -or $Config.ip_address -notmatch '^[a-fA-F0-9.:]+$') { throw 'Invalid SSH connection details.' }
     $keyPath = [Environment]::ExpandEnvironmentVariables($Config.ssh_private_key)
     if (!(Test-Path -LiteralPath $keyPath -PathType Leaf)) { throw 'The configured SSH private key does not exist.' }
-    $sshArgs = @('-T', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=3', '-o', 'StrictHostKeyChecking=accept-new', '-i', $keyPath, '-p', [string]$Config.ssh_port, "$($Config.ssh_user)@$($Config.ip_address)")
+    $sshArgs = @('-n', '-T', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=3', '-o', 'StrictHostKeyChecking=accept-new', '-i', $keyPath, '-p', [string]$Config.ssh_port, "$($Config.ssh_user)@$($Config.ip_address)")
     $url = "http://127.0.0.1:11434/api/$Path"
     if ($null -eq $Body) {
         $output = & ssh @sshArgs "curl --fail --silent --show-error --max-time 10 $url"

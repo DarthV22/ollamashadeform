@@ -55,6 +55,8 @@ The menu provides Start AI, Chat with AI, Check status, Delete instance, and Exi
 
 Start selects the cheapest available on-demand A6000 instance type and an available region, creates the instance, waits up to 20 minutes for activation, waits for SSH/Ollama readiness, and downloads the model. Model downloads can take up to one hour. The price displayed is in cents per instance-hour as returned by Shadeform.
 
+Startup displays progress and SSH readiness errors as they happen. An instance marked active in Shadeform may still be preparing Docker, Ollama, or the model; the app reports ready only after those steps finish. SSH commands disconnect from keyboard input so background readiness checks cannot wait on the menu's console input.
+
 **Instances incur charges until deleted. Exiting the app does not delete the instance.** Use Delete instance when finished and confirm its deletion in the Shadeform dashboard. Keep only one copy of the app running against a configuration file.
 
 The instance ID is saved immediately after creation. Failed startup attempts request deletion; if cleanup fails, the ID is retained for recovery. After an interrupted startup, restart the app and delete the recorded instance before creating another. If creation times out before an ID is returned, check the dashboard before retrying: the remote request may have succeeded. API deletion acceptance is not a guarantee that cloud teardown has finished.

@@ -53,6 +53,34 @@ class AppTests(unittest.TestCase):
         self.assertEqual(run.call_args.kwargs['env']['SHADEFORM_API_KEY'], 'secret')
         self.assertEqual(command[-1], 'instance-1')
 
+    def test_startup_streams_progress_before_process_finishes(self):
+        output = io.StringIO()
+
+        def lines():
+            yield 'Waiting for SSH...\n'
+            self.assertIn('Waiting for SSH...', output.getvalue())
+            yield '{"instance_id":"new-instance","active":true}\n'
+
+        with patch('app.subprocess.Popen') as popen, contextlib.redirect_stdout(output):
+            process = popen.return_value
+            process.stdout = unittest.mock.MagicMock()
+            process.stdout.__iter__.side_effect = lines
+            process.wait.return_value = 0
+            result = app.run_powershell(app.INITIALISE_SCRIPT, ['secret', 'test-model'])
+        self.assertEqual(json.loads(result.splitlines()[-1])['instance_id'], 'new-instance')
+        self.assertNotIn('new-instance', output.getvalue())
+        self.assertNotIn('secret', popen.call_args.args[0])
+        self.assertEqual(popen.call_args.kwargs['env']['SHADEFORM_API_KEY'], 'secret')
+        self.assertEqual(popen.call_args.kwargs['stdin'], subprocess.DEVNULL)
+        process.stdout.close.assert_called_once()
+
+    def test_startup_streams_errors_and_returns_failure(self):
+        with patch('app.subprocess.Popen') as popen:
+            process = popen.return_value
+            process.stdout = io.StringIO('Startup failed: SSH unavailable\n')
+            process.wait.return_value = 1
+            self.assertIsNone(app.run_powershell(app.INITIALISE_SCRIPT, ['secret', 'model']))
+
     def test_failed_start_reloads_recovery_id(self):
         self.config_file.write_text(json.dumps(dict(self.config, instance_id='recover-me')))
         with patch('app.run_powershell', return_value=None):

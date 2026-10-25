@@ -98,7 +98,34 @@ def run_powershell(script, arguments=None):
         *arguments
     ]
 
+    process = None
     try:
+        if script == INITIALISE_SCRIPT:
+            process = subprocess.Popen(
+                command,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                env=environment,
+            )
+            lines = []
+            for line in process.stdout:
+                lines.append(line)
+                try:
+                    data = json.loads(line)
+                except ValueError:
+                    data = None
+                if not (isinstance(data, dict) and "instance_id" in data):
+                    print(line, end="", flush=True)
+            process.stdout.close()
+            if process.wait() != 0:
+                print("\nPowerShell script failed.")
+                return None
+            return "".join(lines).strip()
+
         result = subprocess.run(
             command,
             capture_output=True,
@@ -112,6 +139,11 @@ def run_powershell(script, arguments=None):
         print("OllamaShade currently requires PowerShell on Windows.")
         return None
     except KeyboardInterrupt:
+        if process is not None:
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                capture_output=True,
+            )
         print("\nOperation interrupted. Check the Shadeform dashboard for running instances.")
         return None
 
@@ -158,10 +190,6 @@ def initialise(config):
         json_line = output.splitlines()[-1]
 
         data = json.loads(json_line)
-        progress = "\n".join(output.splitlines()[:-1])
-        if progress:
-            print(progress)
-
         config["instance_id"] = data["instance_id"]
         config["ip_address"] = data["ip_address"]
         config["model"] = data["model"]

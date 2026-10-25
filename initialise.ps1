@@ -91,11 +91,15 @@ try {
     # Probe readiness separately: repeatedly restarting a model download can never finish.
     $ready = $false
     for ($attempt = 0; $attempt -lt 60; $attempt++) {
+        Write-Host "Checking SSH and Ollama readiness ($($attempt + 1)/60)..."
         try {
             $null = Invoke-OllamaOverSsh -Config $connection -Path 'version'
             $ready = $true
             break
-        } catch { Start-Sleep -Seconds 5 }
+        } catch {
+            Write-Host "Not ready yet: $_"
+            Start-Sleep -Seconds 5
+        }
     }
     if (!$ready) { throw 'Ollama did not become reachable.' }
     Write-Host "Pulling model $model. This can take several minutes..."
