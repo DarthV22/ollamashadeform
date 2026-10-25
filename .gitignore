@@ -3,6 +3,7 @@ scrap/
 __pycache__/
 *.py[cod]
 .venv/
+venv/
 config/*.tmp
 .env
 *.pem

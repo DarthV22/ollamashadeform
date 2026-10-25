@@ -10,8 +10,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Set up virtual environment
+        shell: powershell
+        run: .\setup.ps1 -Python (Get-Command python).Source
       - name: Test application and PowerShell lifecycle
-        run: python -m unittest discover -s tests -v
+        run: .\.venv\Scripts\python.exe -m unittest discover -s tests -v
       - name: Check PowerShell syntax
         shell: powershell
         run: |

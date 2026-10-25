@@ -1,6 +1,6 @@
 ﻿# OllamaShade
 
-A small Windows command-line launcher for running an [Ollama](https://ollama.com/) model on an on-demand [Shadeform](https://www.shadeform.ai/) A6000 GPU instance. Start an instance, send prompts, view saved instance details, and delete it when finished. No Python packages are required.
+A small Windows command-line launcher for running an [Ollama](https://ollama.com/) model on an on-demand [Shadeform](https://www.shadeform.ai/) A6000 GPU instance. Start an instance, send prompts, view saved instance details, and delete it when finished. The project runs in its own Python virtual environment (`.venv`) and uses only Python's standard library.
 
 ## Requirements
 
@@ -15,8 +15,10 @@ A small Windows command-line launcher for running an [Ollama](https://ollama.com
 ```powershell
 git clone https://github.com/DarthV22/ollamashadeform.git
 cd ollamashadeform
-Copy-Item config/config.example.json config/config.json
+powershell -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1
 ```
+
+Setup creates `.venv` and copies the example configuration to `config/config.json` if it does not already exist. You can run setup again safely; it reuses the environment and preserves your configuration. Each person who clones the repository creates their own environment locally. There are no third-party Python dependencies to install.
 
 Edit `config/config.json`:
 
@@ -28,8 +30,20 @@ Edit `config/config.json`:
 Leave `instance_id`, `ip_address`, and `active` at their example values. Then run:
 
 ```powershell
-py app.py
+powershell -NoProfile -ExecutionPolicy Bypass -File .\run.ps1
 ```
+
+The launcher always uses `.venv\Scripts\python.exe`, so you do not need to activate the environment first. These commands apply the execution policy only to that PowerShell process.
+
+If your PowerShell execution policy already allows local scripts, you can use `./setup.ps1` and `./run.ps1` directly. To activate the environment manually in PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python app.py
+deactivate
+```
+
+Activation only changes which Python your current terminal uses. You can also run `.\.venv\Scripts\python.exe app.py` directly. The virtual environment isolates Python packages; PowerShell and OpenSSH are still required on Windows.
 
 The menu provides Start AI, Chat with AI, Check status, Delete instance, and Exit. Chat sends independent prompts; it does not maintain conversation history. Status displays saved local details, rather than querying cloud health.
 
@@ -50,6 +64,9 @@ Ollama is bound to `127.0.0.1:11434` on the GPU host. Requests travel through au
 ## Troubleshooting
 
 - **No capacity:** try again later; no instance is created.
+- **Python is missing or setup cannot find it:** install Python 3.10 or later with its launcher, reopen PowerShell, and rerun setup. To choose a specific installation, use `powershell -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 -Python "C:\path\to\python.exe"`.
+- **Environment stopped working after moving the project or upgrading Python:** close terminals using it, remove only the project's `.venv` directory, and rerun setup. Virtual environments should be recreated locally rather than copied between computers. Your settings remain in `config/config.json`.
+- **Activation is blocked by execution policy:** use the `powershell ... -File .\run.ps1` command above, which does not require activation.
 - **SSH fails:** check the registered key, private key path, SSH agent, and provider network access. The instance's SSH username and port come from Shadeform.
 - **Ollama never becomes ready:** check the launch logs and the remote Docker/GPU prerequisites. Startup attempts to delete the instance when it fails.
 - **Deletion fails:** local recovery details remain intact. Retry or delete the instance directly in Shadeform.
@@ -58,7 +75,7 @@ Ollama is bound to `127.0.0.1:11434` on the GPU host. Requests travel through au
 ## Development checks
 
 ```powershell
-py -m unittest discover -s tests -v
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
 The tests exercise Python configuration handling and PowerShell startup, model download, SSH payload handling, deletion, and failure recovery with mocked APIs. They do not create billable cloud resources. GitHub Actions runs the suite on Windows. A live deployment still requires a funded Shadeform account and suitable provider capacity; mocked checks cannot verify a provider image or actual GPU provisioning.
