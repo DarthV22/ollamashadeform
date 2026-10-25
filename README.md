@@ -49,7 +49,7 @@ deactivate
 
 Activation only changes which Python your current terminal uses. You can also run `.\.venv\Scripts\python.exe app.py` directly. The virtual environment isolates Python packages; PowerShell and OpenSSH are still required on Windows.
 
-The menu provides Start AI, Chat with AI, Check status, Delete instance, and Exit. Chat displays replies as they are generated and uses an 8192-token context window. The first reply can take a minute while the model loads; text appears once generation begins. Ctrl+C cancels the current reply and leaves the instance running. Chat sends independent prompts; it does not maintain conversation history. Status displays saved local details, rather than querying cloud health.
+The menu provides Start AI, Chat with AI, Check status, Delete instance, and Exit. Chat displays replies as they are generated and uses an 8192-token context window. The first reply can take several minutes while the model loads; text appears once generation begins. Later replies are usually faster while the model remains loaded. Ctrl+C cancels the current reply and leaves the instance running. Chat sends independent prompts; it does not maintain conversation history. Status displays saved local details, rather than querying cloud health.
 
 ## Instance lifecycle and cost
 
@@ -70,6 +70,8 @@ Ollama is bound to `127.0.0.1:11434` on the GPU host. Requests travel through au
 ## Troubleshooting
 
 - **No capacity:** try again later; no instance is created.
+- **Name already in use after deletion:** cloud teardown can take time after the deletion request is accepted. Confirm the old instance has disappeared in Shadeform before retrying Start AI.
+- **Chat initially shows no text:** allow time for the model to load. Reply streaming starts when generation begins. Repeatedly cancelling requests can prevent the first reply from completing.
 - **Python is missing or setup cannot find it:** install Python 3.10 or later with its launcher, reopen PowerShell, and rerun setup. To choose a specific installation, use `powershell -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1 -Python "C:\path\to\python.exe"`.
 - **Environment stopped working after moving the project or upgrading Python:** close terminals using it, remove only the project's `.venv` directory, and rerun setup. Virtual environments should be recreated locally rather than copied between computers. Your settings remain in `config/config.json`.
 - **Activation is blocked by execution policy:** use the `powershell ... -File .\run.ps1` command above, which does not require activation.

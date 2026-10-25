@@ -255,7 +255,7 @@ def prompt_model(config):
             print()
             return
 
-        print("\nWaiting for the model; the first reply may take a minute to load.", flush=True)
+        print("\nWaiting for the model; the first reply can take several minutes to load.", flush=True)
         print("AI: ", end="", flush=True)
         output = run_powershell(
             PROMPT_SCRIPT,
