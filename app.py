@@ -100,7 +100,7 @@ def run_powershell(script, arguments=None):
 
     process = None
     try:
-        if script == INITIALISE_SCRIPT:
+        if script in (INITIALISE_SCRIPT, PROMPT_SCRIPT):
             process = subprocess.Popen(
                 command,
                 stdin=subprocess.DEVNULL,
@@ -112,6 +112,17 @@ def run_powershell(script, arguments=None):
                 env=environment,
             )
             lines = []
+            if script == PROMPT_SCRIPT:
+                while True:
+                    chunk = process.stdout.read(1)
+                    if not chunk:
+                        break
+                    lines.append(chunk)
+                    print(chunk, end="", flush=True)
+                process.stdout.close()
+                if process.wait() != 0:
+                    return None
+                return "".join(lines).strip()
             for line in process.stdout:
                 lines.append(line)
                 try:
@@ -144,7 +155,12 @@ def run_powershell(script, arguments=None):
                 ["taskkill", "/PID", str(process.pid), "/T", "/F"],
                 capture_output=True,
             )
-        print("\nOperation interrupted. Check the Shadeform dashboard for running instances.")
+            process.wait()
+            process.stdout.close()
+        if script == PROMPT_SCRIPT:
+            print("\nResponse cancelled. Your instance is still running.")
+        else:
+            print("\nOperation interrupted. Check the Shadeform dashboard for running instances.")
         return None
 
     if result.returncode != 0:
@@ -239,6 +255,8 @@ def prompt_model(config):
             print()
             return
 
+        print("\nWaiting for the model; the first reply may take a minute to load.", flush=True)
+        print("AI: ", end="", flush=True)
         output = run_powershell(
             PROMPT_SCRIPT,
             [
@@ -252,7 +270,7 @@ def prompt_model(config):
             print("Failed to get a response from the model.\n")
             continue
 
-        print(f"\nAI: {output}\n")
+        print("\n")
 
 
 # ============================================================

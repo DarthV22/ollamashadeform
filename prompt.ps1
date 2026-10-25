@@ -10,10 +10,7 @@ $ErrorActionPreference = 'Stop'
 try {
     if ([string]::IsNullOrWhiteSpace($prompt)) { throw 'A prompt is required.' }
     $config = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'config/config.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-    $response = Invoke-OllamaOverSsh -Config $config -Path 'generate' -Body @{ model = $model; prompt = $prompt; stream = $false }
-    if ($response.error) { throw $response.error }
-    if ($null -eq $response.response -or $response.done -ne $true) { throw 'Ollama returned an incomplete response.' }
-    $response.response
+    $null = Invoke-OllamaOverSsh -Config $config -Path 'generate' -Stream -Body @{ model = $model; prompt = $prompt; stream = $true; options = @{ num_ctx = 8192 } }
 } catch {
     [Console]::Error.WriteLine("Generation failed: $_")
     exit 1

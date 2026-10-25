@@ -89,11 +89,39 @@ class AppTests(unittest.TestCase):
 
     def test_prompt_is_not_interpreted_as_powershell_parameters(self):
         prompt = '-model "changed"; café $HOME'
-        with patch('app.subprocess.run') as run:
-            run.return_value = subprocess.CompletedProcess([], 0, 'ok', '')
+        with patch('app.subprocess.Popen') as run:
+            run.return_value.stdout = io.StringIO('Hello')
+            run.return_value.wait.return_value = 0
             app.run_powershell(app.PROMPT_SCRIPT, ['192.0.2.1', 'test-model', prompt])
         self.assertNotIn(prompt, run.call_args.args[0])
         self.assertEqual(run.call_args.kwargs['env']['OLLAMASHADE_PROMPT'], prompt)
+
+    def test_chat_displays_partial_reply_before_completion(self):
+        output = io.StringIO()
+
+        def read_chunk(size):
+            self.assertEqual(size, 1)
+            if not output.getvalue():
+                return 'H'
+            if output.getvalue() == 'H':
+                return 'i'
+            return ''
+
+        with patch('app.subprocess.Popen') as popen, contextlib.redirect_stdout(output):
+            process = popen.return_value
+            process.stdout.read.side_effect = read_chunk
+            process.wait.return_value = 0
+            result = app.run_powershell(app.PROMPT_SCRIPT, ['192.0.2.1', 'model', 'hello'])
+        self.assertEqual(result, 'Hi')
+        self.assertEqual(output.getvalue(), 'Hi')
+
+    def test_chat_cancellation_terminates_local_process_tree(self):
+        with patch('app.subprocess.Popen') as popen, patch('app.subprocess.run') as run:
+            process = popen.return_value
+            process.pid = 123
+            process.stdout.read.side_effect = KeyboardInterrupt
+            self.assertIsNone(app.run_powershell(app.PROMPT_SCRIPT, ['ip', 'model', 'hello']))
+        self.assertEqual(run.call_args.args[0], ['taskkill', '/PID', '123', '/T', '/F'])
 
     def test_delete_preserves_state_on_failure_or_invalid_ack(self):
         for response in [None, '{}', 'not-json']:
@@ -202,6 +230,16 @@ class ScriptTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn('unicode-payload', events)
         self.assertIn('Hello', result.stdout)
+
+    def test_chat_rejects_incomplete_stream(self):
+        result, state, events = self.run_scenario('incomplete-stream', 'prompt.ps1')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('incomplete response', result.stderr)
+
+    def test_chat_reports_streamed_model_error(self):
+        result, state, events = self.run_scenario('stream-error', 'prompt.ps1')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('simulated model error', result.stderr)
 
 
 if __name__ == '__main__':

@@ -3,7 +3,8 @@ function Invoke-OllamaOverSsh {
     param(
         [Parameter(Mandatory = $true)]$Config,
         [Parameter(Mandatory = $true)][string]$Path,
-        $Body = $null
+        $Body = $null,
+        [switch]$Stream
     )
     if ($Path -notin @('version', 'pull', 'generate')) { throw 'Unsupported Ollama endpoint.' }
     if (!$Config.ssh_user -or !$Config.ssh_port -or !$Config.ip_address) { throw 'SSH connection details are missing. Start a new instance.' }
@@ -12,6 +13,7 @@ function Invoke-OllamaOverSsh {
     if (!(Test-Path -LiteralPath $keyPath -PathType Leaf)) { throw 'The configured SSH private key does not exist.' }
     $sshArgs = @('-n', '-T', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=15', '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=3', '-o', 'StrictHostKeyChecking=accept-new', '-i', $keyPath, '-p', [string]$Config.ssh_port, "$($Config.ssh_user)@$($Config.ip_address)")
     $url = "http://127.0.0.1:11434/api/$Path"
+    $streamDone = $false
     if ($null -eq $Body) {
         $output = & ssh @sshArgs "curl --fail --silent --show-error --max-time 10 $url"
     } else {
@@ -19,9 +21,20 @@ function Invoke-OllamaOverSsh {
         $json = $Body | ConvertTo-Json -Depth 10 -Compress
         $payload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json))
         $timeout = if ($Path -eq 'pull') { 3600 } else { 600 }
-        $output = & ssh @sshArgs "printf '%s' '$payload' | base64 --decode | curl --fail --silent --show-error --max-time $timeout -H 'Content-Type: application/json' --data-binary @- $url"
+        $output = & ssh @sshArgs "printf '%s' '$payload' | base64 --decode | curl --no-buffer --fail --silent --show-error --max-time $timeout -H 'Content-Type: application/json' --data-binary @- $url" | ForEach-Object {
+            if ($Stream) {
+                $chunk = $_ | ConvertFrom-Json
+                if ($chunk.error) { throw $chunk.error }
+                if ($null -ne $chunk.response) { [Console]::Write([string]$chunk.response) }
+                if ($chunk.done -eq $true) { $streamDone = $true }
+            } else { $_ }
+        }
     }
     if ($LASTEXITCODE -ne 0) { throw "SSH/Ollama request failed (exit $LASTEXITCODE). Check your SSH key and the instance in Shadeform." }
+    if ($Stream) {
+        if (!$streamDone) { throw 'Ollama returned an incomplete response.' }
+        return @{ done = $true }
+    }
     $response = ($output -join "`n") | ConvertFrom-Json
     if ($response.error) { throw $response.error }
     return $response

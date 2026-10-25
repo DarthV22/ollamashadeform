@@ -49,7 +49,7 @@ deactivate
 
 Activation only changes which Python your current terminal uses. You can also run `.\.venv\Scripts\python.exe app.py` directly. The virtual environment isolates Python packages; PowerShell and OpenSSH are still required on Windows.
 
-The menu provides Start AI, Chat with AI, Check status, Delete instance, and Exit. Chat sends independent prompts; it does not maintain conversation history. Status displays saved local details, rather than querying cloud health.
+The menu provides Start AI, Chat with AI, Check status, Delete instance, and Exit. Chat displays replies as they are generated and uses an 8192-token context window. The first reply can take a minute while the model loads; text appears once generation begins. Ctrl+C cancels the current reply and leaves the instance running. Chat sends independent prompts; it does not maintain conversation history. Status displays saved local details, rather than querying cloud health.
 
 ## Instance lifecycle and cost
 

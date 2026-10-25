@@ -46,7 +46,10 @@ function ssh {
         $body = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($payload)) | ConvertFrom-Json
         if ($body.prompt -ne 'Say "hello"; café $HOME') { throw 'Prompt was corrupted' }
         Log 'unicode-payload'
-        return '{"response":"Hello","done":true}'
+        if ($scenario -eq 'stream-error') { return '{"error":"simulated model error"}' }
+        if ($scenario -eq 'incomplete-stream') { return '{"response":"Hel","done":false}' }
+        if ($body.stream -ne $true -or $body.options.num_ctx -ne 8192) { throw 'Expected streaming chat with an 8192-token context' }
+        return @('{"response":"Hel","done":false}', '{"response":"lo","done":true}')
     }
     throw 'Unexpected SSH command'
 }
