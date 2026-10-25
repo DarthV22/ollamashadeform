@@ -13,8 +13,8 @@ A small Windows command-line launcher for running an [Ollama](https://ollama.com
 ## Setup
 
 ```powershell
-git clone https://github.com/DarthV22/ollamashade.git
-cd ollamashade
+git clone https://github.com/DarthV22/ollamashadeform.git
+cd ollamashadeform
 Copy-Item config/config.example.json config/config.json
 ```
 
