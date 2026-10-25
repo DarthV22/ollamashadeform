@@ -1,6 +1,8 @@
 {
     "api_key": "PUT_YOUR_SHADEFORM_API_KEY_HERE",
     "model": "llama3.1:8b",
+    "ssh_key_id": "YOUR_SHADEFORM_SSH_KEY_ID",
+    "ssh_private_key": "C:/Users/YOUR_USERNAME/.ssh/id_ed25519",
     "instance_id": null,
     "ip_address": null,
     "active": false

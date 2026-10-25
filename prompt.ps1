@@ -1,52 +1,20 @@
-param(
-    [string]$ipAddress,
-    [string]$model,
-    [string]$prompt
+﻿param(
+    [Parameter(Mandatory = $true)][string]$ipAddress,
+    [Parameter(Mandatory = $true)][string]$model,
+    [string]$prompt = $env:OLLAMASHADE_PROMPT
 )
 
-$maxRetries = 10
-$retryCount = 0
-$generateSuccess = $false
-
-
-while ($retryCount -lt $maxRetries -and -not $generateSuccess) {
-
-    try {
-
-        $response = Invoke-RestMethod `
-            -Uri "http://$($ipAddress):11434/api/generate" `
-            -Method Post `
-            -Body (@{
-                model = $model
-                prompt = $prompt
-                stream = $false
-            } | ConvertTo-Json) `
-            -ContentType "application/json" `
-            -TimeoutSec 60
-
-        $response.response
-
-        $generateSuccess = $true
-
-    }
-
-    catch {
-
-        $retryCount++
-
-        if ($retryCount -lt $maxRetries) {
-
-            Write-Host "Generate request failed. Retrying in 5 seconds..."
-            Start-Sleep -Seconds 5
-
-        }
-
-        else {
-
-            Write-Host "Failed to generate response after $maxRetries attempts."
-            Write-Host "Error: $_"
-
-            exit 1
-        }
-    }
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding
+. (Join-Path $PSScriptRoot 'transport.ps1')
+try {
+    if ([string]::IsNullOrWhiteSpace($prompt)) { throw 'A prompt is required.' }
+    $config = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'config/config.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+    $response = Invoke-OllamaOverSsh -Config $config -Path 'generate' -Body @{ model = $model; prompt = $prompt; stream = $false }
+    if ($response.error) { throw $response.error }
+    if ($null -eq $response.response -or $response.done -ne $true) { throw 'Ollama returned an incomplete response.' }
+    $response.response
+} catch {
+    [Console]::Error.WriteLine("Generation failed: $_")
+    exit 1
 }

@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -31,11 +32,26 @@ def load_config():
         sys.exit(1)
 
     try:
-        with open(CONFIG_FILE, "r", encoding="utf-8") as file:
-            return json.load(file)
+        with open(CONFIG_FILE, "r", encoding="utf-8-sig") as file:
+            config = json.load(file)
+        if not isinstance(config, dict):
+            raise ValueError("Configuration must be a JSON object.")
+        for key in ("api_key", "model"):
+            if not isinstance(config.get(key), str) or not config[key].strip():
+                raise ValueError(f"Set a non-empty {key} in config.json.")
+        if config["api_key"] == "PUT_YOUR_SHADEFORM_API_KEY_HERE":
+            raise ValueError("Replace the example API key in config.json.")
+        if type(config.get("active", False)) is not bool:
+            raise ValueError("active must be true or false.")
+        if config.get("active") and not (config.get("instance_id") and config.get("ip_address")):
+            raise ValueError("An active instance needs instance_id and ip_address.")
+        return config
 
     except json.JSONDecodeError:
         print("\nError: config.json contains invalid JSON.")
+        sys.exit(1)
+    except (OSError, ValueError) as error:
+        print(f"\nCould not load config: {error}")
         sys.exit(1)
 
 
@@ -44,8 +60,10 @@ def save_config(config):
 
     CONFIG_DIR.mkdir(exist_ok=True)
 
-    with open(CONFIG_FILE, "w", encoding="utf-8") as file:
+    temporary = CONFIG_FILE.with_suffix(".tmp")
+    with open(temporary, "w", encoding="utf-8") as file:
         json.dump(config, file, indent=4)
+    temporary.replace(CONFIG_FILE)
 
 
 # ============================================================
@@ -62,6 +80,14 @@ def run_powershell(script, arguments=None):
     if arguments is None:
         arguments = []
 
+    environment = os.environ.copy()
+    # Keep credentials off the child process command line.
+    if script in (INITIALISE_SCRIPT, CLEAR_SCRIPT) and arguments:
+        environment["SHADEFORM_API_KEY"] = arguments[0]
+        arguments = arguments[1:]
+    elif script == PROMPT_SCRIPT and len(arguments) == 3:
+        environment["OLLAMASHADE_PROMPT"] = arguments[2]
+        arguments = arguments[:2]
     command = [
         "powershell",
         "-NoProfile",
@@ -76,17 +102,24 @@ def run_powershell(script, arguments=None):
         result = subprocess.run(
             command,
             capture_output=True,
-            text=True
+            text=True,
+            encoding="utf-8",
+            env=environment
         )
 
     except FileNotFoundError:
         print("\nPowerShell could not be found.")
-        print("Zircon currently requires PowerShell on Windows.")
+        print("OllamaShade currently requires PowerShell on Windows.")
+        return None
+    except KeyboardInterrupt:
+        print("\nOperation interrupted. Check the Shadeform dashboard for running instances.")
         return None
 
     if result.returncode != 0:
         print("\nPowerShell script failed.")
         
+        if result.stdout:
+            print(result.stdout.strip())
         if result.stderr:
             print(result.stderr.strip())
 
@@ -115,9 +148,9 @@ def initialise(config):
     )
 
     if output is None:
+        # The startup script checkpoints recovery details as soon as creation succeeds.
+        config.update(load_config())
         return False
-
-    print(output)
 
     try:
         # The final line is the structured JSON returned by
@@ -125,15 +158,18 @@ def initialise(config):
         json_line = output.splitlines()[-1]
 
         data = json.loads(json_line)
+        progress = "\n".join(output.splitlines()[:-1])
+        if progress:
+            print(progress)
 
         config["instance_id"] = data["instance_id"]
         config["ip_address"] = data["ip_address"]
         config["model"] = data["model"]
         config["active"] = data["active"]
+        # Keep the SSH details written by the startup script.
+        config.update(load_config())
 
-        save_config(config)
-
-    except (json.JSONDecodeError, KeyError, IndexError) as error:
+    except (json.JSONDecodeError, KeyError, IndexError, TypeError, OSError) as error:
 
         print("\nCould not read instance information.")
         print(f"Error: {error}")
@@ -217,12 +253,22 @@ def clear_instance(config):
 
     print(output)
 
-    # Clear runtime information.
+    try:
+        if json.loads(output.splitlines()[-1]).get("deleted") is not True:
+            raise ValueError("Deletion was not acknowledged.")
+    except (ValueError, IndexError, AttributeError) as error:
+        print(f"Could not confirm deletion: {error}")
+        return
+
+    # Clear runtime information only after a successful API response.
     config["instance_id"] = None
     config["ip_address"] = None
     config["active"] = False
 
-    save_config(config)
+    try:
+        save_config(config)
+    except OSError as error:
+        print(f"Instance deleted, but local config could not be saved: {error}")
 
     print("\nInstance cleared.")
 
@@ -243,7 +289,12 @@ def show_status(config):
         print(f"IP address:   {config.get('ip_address', 'Unknown')}")
         print(f"Model:        {config.get('model', 'Unknown')}")
     else:
-        print("Status:       NOT RUNNING")
+        if config.get("instance_id"):
+            print("Saved status: STARTUP INCOMPLETE; instance may still incur charges")
+            print(f"Instance ID:  {config['instance_id']}")
+            print("Use Delete instance or check the Shadeform dashboard.")
+        else:
+            print("Saved status: NOT RUNNING")
 
     print()
 
@@ -266,7 +317,10 @@ def main():
             print("Status: ACTIVE")
             print(f"Model:  {config.get('model', 'Unknown')}")
         else:
-            print("Status: NOT RUNNING")
+            if config.get("instance_id"):
+                print("Status: STARTUP INCOMPLETE; delete the recorded instance")
+            else:
+                print("Status: NOT RUNNING")
 
         print("----------------------------------------")
         print("1. Start AI")
@@ -285,8 +339,8 @@ def main():
 
         if choice == "1":
 
-            if config.get("active"):
-                print("\nAn instance is already active.")
+            if config.get("active") or config.get("instance_id"):
+                print("\nAn instance is already recorded. Delete it before starting another.")
                 continue
 
             initialise(config)
@@ -306,6 +360,8 @@ def main():
         elif choice == "5":
 
             print("\nExiting OllamaShade.")
+            if config.get("instance_id"):
+                print("Your instance is still running and may incur charges. Use Delete instance to stop it.")
             break
 
         else:

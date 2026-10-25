@@ -1,2 +1,9 @@
 config/config.json
 scrap/
+__pycache__/
+*.py[cod]
+.venv/
+config/*.tmp
+.env
+*.pem
+*.key
