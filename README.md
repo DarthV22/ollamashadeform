@@ -18,7 +18,7 @@ cd ollamashadeform
 powershell -NoProfile -ExecutionPolicy Bypass -File .\setup.ps1
 ```
 
-Setup creates `.venv` and copies the example configuration to `config/config.json` if it does not already exist. You can run setup again safely; it reuses the environment and preserves your configuration. Each person who clones the repository creates their own environment locally. There are no third-party Python dependencies to install.
+Setup creates `.venv` and copies the example configuration to `config/config.json` if it does not already exist. On later runs it adds any missing fields from the example while preserving existing values, credentials, and instance recovery details. Review added placeholder values before starting AI. Each person who clones the repository creates their own environment locally. There are no third-party Python dependencies to install.
 
 Edit `config/config.json`:
 
@@ -26,6 +26,10 @@ Edit `config/config.json`:
 - `model`: an Ollama model name, such as `llama3.1:8b`. Choose one that fits the GPU memory.
 - `ssh_key_id`: the ID of your registered public key in Shadeform.
 - `ssh_private_key`: the absolute local path to its matching private key. Use forward slashes in JSON paths, for example `C:/Users/Alex/.ssh/id_ed25519`.
+
+Edit your actual settings in `config/config.json`; `config/config.example.json` is the shared template. `ssh_key_id` is Shadeform's ID for a registered public key, not the public key text or its fingerprint. `ssh_private_key` points to the matching private key file without the `.pub` extension. Register only the public key with Shadeform when using a locally generated key, and keep the private file outside this repository. If the private key has a passphrase, start Windows `ssh-agent` and load it with `ssh-add` before starting AI: the app uses noninteractive SSH and cannot ask for a passphrase. Restart the app after changing configuration because its menu keeps settings in memory.
+
+If you use a Shadeform managed key, download its matching private key from your account and save it in your Windows user profile's `.ssh` directory with file access restricted to your account. Set `ssh_private_key` to that file's absolute path. The key ID alone cannot authenticate SSH. Shadeform documents [SSH key details](https://docs.shadeform.ai/api-reference/sshkeys/sshkeys-info) and [registering your own public key](https://docs.shadeform.ai/api-reference/sshkeys/sshkeys-add).
 
 Leave `instance_id`, `ip_address`, and `active` at their example values. Then run:
 

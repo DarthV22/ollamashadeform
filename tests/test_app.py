@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -83,6 +84,32 @@ class AppTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which('powershell'), 'Windows PowerShell required')
 class ScriptTests(unittest.TestCase):
+    def test_setup_upgrades_old_config_without_overwriting_settings(self):
+        with tempfile.TemporaryDirectory(prefix='ollamashade setup ') as directory:
+            root = Path(directory)
+            (root / 'config').mkdir()
+            shutil.copy(app.BASE_DIR / 'setup.ps1', root / 'setup.ps1')
+            shutil.copy(app.BASE_DIR / 'config/config.example.json', root / 'config/config.example.json')
+            original = dict(api_key='keep-secret', model='custom-model', active=False,
+                            instance_id='recover-me', ip_address=None,
+                            custom={'nested': 'keep-me'}, ssh_key_id='keep-key-id')
+            config_path = root / 'config/config.json'
+            config_path.write_text(json.dumps(original), encoding='utf-8-sig')
+            subprocess.run([sys._base_executable, '-m', 'venv', '--without-pip', str(root / '.venv')],
+                           check=True, capture_output=True, timeout=30)
+            command = ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass',
+                       '-File', str(root / 'setup.ps1')]
+            result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            upgraded = json.loads(config_path.read_text(encoding='utf-8-sig'))
+            for name, value in original.items():
+                self.assertEqual(upgraded[name], value)
+            self.assertIn('ssh_private_key', upgraded)
+            before = config_path.read_bytes()
+            result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(config_path.read_bytes(), before)
+
     def run_scenario(self, scenario, script='initialise.ps1'):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -127,6 +154,15 @@ class ScriptTests(unittest.TestCase):
         result, state, events = self.run_scenario('no-capacity')
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn('create:', events)
+
+    def test_missing_ssh_key_fails_before_creation_with_clear_message(self):
+        result, state, events = self.run_scenario('missing-ssh-key')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Set ssh_key_id', result.stderr)
+        self.assertIn('No instance was created.', result.stderr)
+        self.assertNotIn('create request timed out', result.stderr)
+        self.assertNotIn('create:', events)
+        self.assertIsNone(state['instance_id'])
 
     def test_delete_api_error_exits_nonzero(self):
         result, state, events = self.run_scenario('delete-failure', 'clear.ps1')

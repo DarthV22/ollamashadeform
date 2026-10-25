@@ -7,6 +7,7 @@ $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding
 $headers = @{ 'X-API-KEY' = $apiKey }
 $instanceId = $null
+$createAttempted = $false
 $configPath = Join-Path $PSScriptRoot 'config/config.json'
 . (Join-Path $PSScriptRoot 'transport.ps1')
 
@@ -63,6 +64,7 @@ try {
             }
         }
     }
+    $createAttempted = $true
     $created = Invoke-RestMethod -Uri 'https://api.shadeform.ai/v1/instances/create' -Headers $headers -Method Post -Body ($body | ConvertTo-Json -Depth 10) -ContentType 'application/json' -TimeoutSec 60
     $instanceId = $created.id
     if (!$instanceId) { throw 'Create response did not contain an instance ID. Check the Shadeform dashboard before retrying.' }
@@ -111,8 +113,10 @@ try {
         } catch {
             [Console]::Error.WriteLine("Could not complete cleanup. Delete instance $instanceId in the Shadeform dashboard. Error: $_")
         }
-    } else {
+    } elseif ($createAttempted) {
         [Console]::Error.WriteLine('If a create request timed out, check the Shadeform dashboard before retrying; it may have succeeded remotely.')
+    } else {
+        [Console]::Error.WriteLine('No instance was created. Fix the issue above and try again.')
     }
     exit 1
 }

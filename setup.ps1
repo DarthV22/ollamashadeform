@@ -47,6 +47,23 @@ try {
     if (!(Test-Path -LiteralPath $configPath)) {
         Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'config/config.example.json') -Destination $configPath
         Write-Host 'Created config/config.json. Edit it with your Shadeform API key and SSH settings.'
+    } else {
+        $config = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($config -isnot [PSCustomObject]) { throw 'config/config.json must contain a JSON object.' }
+        $defaults = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'config/config.example.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+        $added = @()
+        foreach ($property in $defaults.PSObject.Properties) {
+            if ($config.PSObject.Properties.Name -notcontains $property.Name) {
+                $config | Add-Member -NotePropertyName $property.Name -NotePropertyValue $property.Value
+                $added += $property.Name
+            }
+        }
+        if ($added.Count -gt 0) {
+            $temporary = [IO.Path]::ChangeExtension($configPath, '.tmp')
+            [IO.File]::WriteAllText($temporary, ($config | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding))
+            Move-Item -LiteralPath $temporary -Destination $configPath -Force
+            Write-Host "Added missing configuration fields: $($added -join ', '). Review config/config.json before starting AI."
+        }
     }
 
     Write-Host 'Setup complete. No third-party Python packages are required.'

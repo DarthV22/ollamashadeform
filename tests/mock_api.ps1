@@ -61,6 +61,12 @@ if ($target -eq 'clear.ps1') {
     $config | ConvertTo-Json | Set-Content -Encoding utf8 $path
     & (Join-Path $PSScriptRoot $target) '192.0.2.1' 'test-model' 'Say "hello"; café $HOME'
 } else {
+    if ($scenario -eq 'missing-ssh-key') {
+        $path = Join-Path $PSScriptRoot 'config/config.json'
+        $config = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+        $config.ssh_key_id = 'YOUR_SHADEFORM_SSH_KEY_ID'
+        $config | ConvertTo-Json | Set-Content -Encoding utf8 -LiteralPath $path
+    }
     & (Join-Path $PSScriptRoot $target) 'test-model'
 }
 exit $LASTEXITCODE
